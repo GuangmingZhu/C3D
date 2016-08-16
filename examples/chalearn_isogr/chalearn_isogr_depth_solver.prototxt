@@ -14,4 +14,4 @@ snapshot: 1000
 snapshot_prefix: "chalearn_isogr_depth"
 # solver mode: CPU or GPU
 solver_mode: GPU
-device_id: 0
+device_id: 1
