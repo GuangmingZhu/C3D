@@ -166,6 +166,7 @@ message LayerParameter {
     POOLING3D = 31;
     VOLUME_DATA = 32;
     VIDEO_DATA = 33;
+	RESHAPE = 34;
   }
   optional LayerType type = 5; // the layer type from the enum above
 
@@ -192,6 +193,7 @@ message LayerParameter {
   optional PoolingParameter pooling_param = 19;
   optional PowerParameter power_param = 21;
   optional WindowDataParameter window_data_param = 20;
+  optional ReshapeParameter reshape_param = 34;
 
   // DEPRECATED: The layer parameters specified as a V0LayerParameter.
   // This should never be used by any code except to upgrade to the new
@@ -308,6 +310,7 @@ message ImageDataParameter {
   optional bool use_label = 15 [default = true];
   optional bool use_temporal_jitter = 16 [default = false];
   optional float mean_value = 17 [default = 0];  
+  optional bool use_pyramid_input = 555 [default = false];
 }
 
 
@@ -373,6 +376,12 @@ message PowerParameter {
   optional float power = 1 [default = 1.0];
   optional float scale = 2 [default = 1.0];
   optional float shift = 3 [default = 0.0];
+}
+
+message ReshapeParameter {
+  // Specify the output dimensions. If some of the dimensions are set to 0,
+  // the corresponding dimension from the bottom layer is used (unchanged).
+  repeated int32 shape = 1;
 }
 
 // Message that stores parameters used by WindowDataLayer

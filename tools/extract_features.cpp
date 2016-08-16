@@ -114,7 +114,7 @@ int feature_extraction_pipeline(int argc, char** argv) {
 
   Datum datum;
   leveldb::WriteBatch* batch = new leveldb::WriteBatch();
-  const int kMaxKeyStrLength = 100;
+  const int kMaxKeyStrLength = 6;
   char key_str[kMaxKeyStrLength];
   int num_bytes_of_binary_code = sizeof(Dtype);
   vector<Blob<float>*> input_vec;
@@ -139,7 +139,7 @@ int feature_extraction_pipeline(int argc, char** argv) {
       }
       string value;
       datum.SerializeToString(&value);
-      snprintf(key_str, kMaxKeyStrLength, "%d", image_index);
+      snprintf(key_str, kMaxKeyStrLength, "%06d", image_index);
       batch->Put(string(key_str), value);
       ++image_index;
       if (image_index % 1000 == 0) {

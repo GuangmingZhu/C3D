@@ -65,7 +65,7 @@ class VideoDataLayer : public Layer<Dtype> {
 
   shared_ptr<Caffe::RNG> prefetch_rng_;
   vector<string> file_list_;
-  vector<int> start_frm_list_;
+  vector<int> frm_list_;
   vector<int> label_list_;
   vector<int> shuffle_index_;
   int lines_id_;

@@ -43,6 +43,8 @@ using std::string;
 
 namespace caffe {
 
+const int seg_cnt = 4;
+
 template <typename Dtype>
 void* VideoDataLayerPrefetch(void* layer_pointer) {
   CHECK(layer_pointer);
@@ -66,6 +68,7 @@ void* VideoDataLayerPrefetch(void* layer_pointer) {
   const bool use_image = layer->layer_param_.image_data_param().use_image();
   const int sampling_rate = layer->layer_param_.image_data_param().sampling_rate();
   const bool use_temporal_jitter = layer->layer_param_.image_data_param().use_temporal_jitter();
+  const bool use_pyramid_input = layer->layer_param_.image_data_param().use_pyramid_input();
 
   if (mirror && crop_size == 0) {
     LOG(FATAL) << "Current implementation requires mirror and crop_size to be "
@@ -83,14 +86,15 @@ void* VideoDataLayerPrefetch(void* layer_pointer) {
   char *data_buffer;
   if (show_data)
 	  data_buffer = new char[size];
-  for (int item_id = 0; item_id < batch_size; ++item_id) {
+  for (int item_id = 0; item_id < batch_size*seg_cnt; ++item_id) {
     // get a blob
+	int seg_id = item_id % seg_cnt;
     CHECK_GT(chunks_size, layer->lines_id_);
     bool read_status;
     int id = layer->shuffle_index_[layer->lines_id_];
     if (!use_image){
     	if (!use_temporal_jitter){
-    		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), layer->start_frm_list_[id],
+    		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), layer->frm_list_[id],
     	    		layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
     	}else{
     		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), -1,
@@ -98,25 +102,8 @@ void* VideoDataLayerPrefetch(void* layer_pointer) {
     	}
     }
     else {
-    	if (!use_temporal_jitter) {
-    		read_status = ReadImageSequenceToVolumeDatum(layer->file_list_[id].c_str(), layer->start_frm_list_[id],
-    	    	    		layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
-    	} else {
-    		int num_of_frames = layer->start_frm_list_[id];
-    		int use_start_frame;
-    		if (num_of_frames<new_length*sampling_rate){
-    			LOG(INFO) << "not enough frames; having " << num_of_frames;
-    			read_status = false;
-    		} else {
-    			if (layer->phase_ == Caffe::TRAIN)
-    				use_start_frame = layer->PrefetchRand()%(num_of_frames-new_length*sampling_rate+1)+1;
-    			else
-    				use_start_frame = 0;
-
-    			read_status = ReadImageSequenceToVolumeDatum(layer->file_list_[id].c_str(), use_start_frame,
-    			    	    	    		layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
-    		}
-    	}
+		read_status = ReadImageSequenceToVolumeDatum(layer->file_list_[id].c_str(), layer->frm_list_[id],
+				layer->label_list_[id], new_length, new_height, new_width, seg_id, &datum);
     }
 
     if (layer->phase_ == Caffe::TEST){
@@ -232,11 +219,15 @@ void* VideoDataLayerPrefetch(void* layer_pointer) {
     	}
     }
     if (layer->output_labels_) {
-      top_label[item_id] = datum.label();
-      // LOG(INFO) << "fetching label" << datum.label() << std::endl;
+		if (use_pyramid_input)
+			top_label[item_id/seg_cnt] = datum.label();
+		else
+			top_label[item_id] = datum.label();
+		// LOG(INFO) << "fetching label" << datum.label() << std::endl;
     }
 
-    layer->lines_id_++;
+	if ((item_id+1)%seg_cnt == 0)
+    	layer->lines_id_++;
     if (layer->lines_id_ >= chunks_size) {
       // We have reached the end. Restart from the first.
       DLOG(INFO) << "Restarting data prefetching from start.";
@@ -279,13 +270,13 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   // Read the file with filenames and labels
   const string& source = this->layer_param_.image_data_param().source();
   const bool use_temporal_jitter = this->layer_param_.image_data_param().use_temporal_jitter();
+  const bool use_pyramid_input = this->layer_param_.image_data_param().use_pyramid_input();
   const bool use_image = this->layer_param_.image_data_param().use_image();
   LOG(INFO) << "Opening file " << source;
   std::ifstream infile(source.c_str());
   int count = 0;
   string filename;
-  int start_frm, label;
-
+  int frm, label;
 
   if ((!use_image) && use_temporal_jitter){
 	  while (infile >> filename >> label) {
@@ -295,9 +286,9 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 		  count++;
 	  }
   } else {
-	  while (infile >> filename >> start_frm >> label) {
+	  while (infile >> filename >> frm >> label) {
 		  file_list_.push_back(filename);
-		  start_frm_list_.push_back(start_frm);
+		  frm_list_.push_back(frm);
 		  label_list_.push_back(label);
 		  shuffle_index_.push_back(count);
 		  count++;
@@ -337,29 +328,29 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
 		                             new_length, new_height, new_width, sampling_rate, &datum));
 	  }
 	  else
-		  CHECK(ReadVideoToVolumeDatum(file_list_[id].c_str(), start_frm_list_[id], label_list_[id],
+		  CHECK(ReadVideoToVolumeDatum(file_list_[id].c_str(), frm_list_[id], label_list_[id],
                            	   	   new_length, new_height, new_width, sampling_rate, &datum));
   }
   else{
 	  LOG(INFO) << "read video from " << file_list_[id].c_str();
-	  CHECK(ReadImageSequenceToVolumeDatum(file_list_[id].c_str(), start_frm_list_[id], label_list_[id],
-	                             new_length, new_height, new_width, sampling_rate, &datum));
+	  CHECK(ReadImageSequenceToVolumeDatum(file_list_[id].c_str(), frm_list_[id], label_list_[id],
+	                             new_length, new_height, new_width, 3, &datum));
   }
 
   // image
   int crop_size = this->layer_param_.image_data_param().crop_size();
   if (crop_size > 0) {
-    (*top)[0]->Reshape(this->layer_param_.image_data_param().batch_size(),
+    (*top)[0]->Reshape(this->layer_param_.image_data_param().batch_size()*seg_cnt,
                        datum.channels(), datum.length(), crop_size, crop_size);
     prefetch_data_.reset(new Blob<Dtype>(
-        this->layer_param_.image_data_param().batch_size(), datum.channels(), datum.length(),
+        this->layer_param_.image_data_param().batch_size()*seg_cnt, datum.channels(), datum.length(),
         crop_size, crop_size));
   } else {
     (*top)[0]->Reshape(
-        this->layer_param_.image_data_param().batch_size(), datum.channels(), datum.length(),
+        this->layer_param_.image_data_param().batch_size()*seg_cnt, datum.channels(), datum.length(),
         datum.height(), datum.width());
     prefetch_data_.reset(new Blob<Dtype>(
-        this->layer_param_.image_data_param().batch_size(), datum.channels(), datum.length(),
+        this->layer_param_.image_data_param().batch_size()*seg_cnt, datum.channels(), datum.length(),
         datum.height(), datum.width()));
   }
   LOG(INFO) << "output data size: " << (*top)[0]->num() << ","
@@ -367,9 +358,15 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
       << (*top)[0]->width();
   // label
   if (output_labels_) {
-    (*top)[1]->Reshape(this->layer_param_.image_data_param().batch_size(), 1, 1, 1, 1);
-    prefetch_label_.reset(
-        new Blob<Dtype>(this->layer_param_.image_data_param().batch_size(), 1, 1, 1, 1));
+	if (use_pyramid_input) {
+		(*top)[1]->Reshape(this->layer_param_.image_data_param().batch_size(), 1, 1, 1, 1);
+		prefetch_label_.reset(
+				new Blob<Dtype>(this->layer_param_.image_data_param().batch_size(), 1, 1, 1, 1));
+	} else {
+		(*top)[1]->Reshape(this->layer_param_.image_data_param().batch_size()*seg_cnt, 1, 1, 1, 1);
+		prefetch_label_.reset(
+				new Blob<Dtype>(this->layer_param_.image_data_param().batch_size()*seg_cnt, 1, 1, 1, 1));
+	}
   }
 
 
@@ -402,7 +399,6 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
     				(Dtype*)data_mean_.mutable_cpu_data());
     }
   }
-
 
   // Now, start the prefetch thread. Before calling prefetch, we make two
   // cpu_data calls so that the prefetch thread does not accidentally make

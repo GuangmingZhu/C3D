@@ -33,6 +33,7 @@
 #include "caffe/common.hpp"
 #include "caffe/util/image_io.hpp"
 #include "caffe/proto/caffe.pb.h"
+#include "caffe/util/math_functions.hpp"
 
 using std::fstream;
 using std::ios;
@@ -172,31 +173,69 @@ bool ReadVideoToVolumeDatum(const char* filename, const int start_frm, const int
  	return true;
 }
 
-bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int start_frm, const int label,
-		const int length, const int height, const int width, const int sampling_rate, VolumeDatum* datum){
+bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int frm_num, const int label,
+		const int length, const int height, const int width, const int seg_id, VolumeDatum* datum){
 	char fn_im[256];
 	cv::Mat img, img_origin;
 	char *buffer;
 	int offset, channel_size, image_size, data_size;
+	int start_pos[4];
+	int end_pos[4];
 
-	datum->set_channels(3);
-	datum->set_length(length);
-	datum->set_label(label);
-	datum->clear_data();
-	datum->clear_float_data();
+	if (frm_num <= length) {
+		start_pos[0] = start_pos[1] = start_pos[2] = 1;
+		end_pos[0] = end_pos[1] = end_pos[2] = frm_num;
+	} else if (frm_num > length && frm_num < length*3) {
+		offset = length - (length*3-frm_num)/2;
+		start_pos[0] = 1;
+		end_pos[0] = length;
+		start_pos[1] = start_pos[0] + offset;
+		end_pos[1] = start_pos[1] + length - 1;
+		start_pos[2] = start_pos[1] + offset;
+		end_pos[2] = frm_num;
+	} else {
+		start_pos[0] = 1;
+		end_pos[0] = frm_num/3;
+		start_pos[1] = end_pos[0] + 1;
+		end_pos[1] = frm_num*2/3;
+		start_pos[2] = end_pos[1] + 1;
+		end_pos[2] = frm_num;
+	}
+	start_pos[3] = 1;
+	end_pos[3] = frm_num;
+
+	std::vector<int> frm_idx(length, 0);
+	int seg_len = end_pos[seg_id] - start_pos[seg_id] + 1;
+	if (seg_len <= length) {
+		for (int i = 0; i < seg_len; i++)
+			frm_idx[i] = start_pos[seg_id] + i;
+		for (int i = seg_len; i < length; i++)
+			frm_idx[i] = end_pos[seg_id];
+	} else {
+		float jit, rate = frm_num;
+		rate = rate/length;
+		frm_idx[0] = 1;
+		frm_idx[length-1] = frm_num;
+		for (int i= 1; i < length - 1; i++) {
+			caffe_rng_uniform(1, float(-1.0), float(1.0), &jit);
+			frm_idx[i] = int(round(rate*i + rate/2*jit));
+			if (frm_idx[i] == 0) frm_idx[i] = 1;
+		}
+	}
 
 	offset = 0;
-	int end_frm = start_frm + length * sampling_rate;
-	for (int i=start_frm; i<end_frm; i+=sampling_rate){
-		sprintf(fn_im, "%s/%06d.jpg", img_dir, i);
+	for (int i = 0; i < length; i++) {
+		sprintf(fn_im, "%s/%06d.jpg", img_dir, frm_idx[i]);
 		if (height > 0 && width > 0) {
-		    img_origin = cv::imread(fn_im, CV_LOAD_IMAGE_COLOR);
-		    if (!img_origin.data)
-		    	return false;
-		    cv::resize(img_origin, img, cv::Size(width, height));
-		    img_origin.release();
+			img_origin = cv::imread(fn_im, CV_LOAD_IMAGE_COLOR);
+			if (!img_origin.data) {
+				LOG(ERROR) << "Could not open or find file " << fn_im;
+				return false;
+			}
+			cv::resize(img_origin, img, cv::Size(width, height));
+			img_origin.release();
 		} else {
-		  img = cv::imread(fn_im, CV_LOAD_IMAGE_COLOR);
+			img = cv::imread(fn_im, CV_LOAD_IMAGE_COLOR);
 		}
 
 		if (!img.data){
@@ -204,7 +243,10 @@ bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int start_frm, co
 			return false;
 		}
 
-		if (i==start_frm){
+		if (i==0){
+			datum->set_channels(3);
+			datum->set_length(length);
+			datum->set_label(label);
 			datum->set_height(img.rows);
 			datum->set_width(img.cols);
 			image_size = img.rows * img.cols;

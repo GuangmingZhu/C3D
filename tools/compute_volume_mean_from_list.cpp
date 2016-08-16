@@ -36,7 +36,7 @@ using std::max;
 int main(int argc, char** argv) {
   ::google::InitGoogleLogging(argv[0]);
   if (argc < 7) {
-    LOG(ERROR) << "Usage: compute_volume_mean_from_list input_chunk_list length height width sampling_rate output_file [dropping rate]";
+    LOG(ERROR) << "Usage: compute_volume_mean_from_list input_chunk_list length height width seg_id output_file [dropping rate]";
     return 1;
   }
 
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   const int length = atoi(argv[2]);
   const int height = atoi(argv[3]);
   const int width = atoi(argv[4]);
-  const int sampling_rate = atoi(argv[5]);
+  const int seg_id = atoi(argv[5]);
   char* fn_output = argv[6];
 
   int dropping_rate = 1;
@@ -59,11 +59,11 @@ int main(int argc, char** argv) {
 
   std::ifstream infile(fn_list);
   string frm_dir;
-  int label, start_frm;
-  infile >> frm_dir >> start_frm >> label;
+  int label, frm_num;
+  infile >> frm_dir >> frm_num >> label;
 
-  ReadImageSequenceToVolumeDatum(frm_dir.c_str(), start_frm, label,
-  	                             length, height, width, sampling_rate, &datum);
+  ReadImageSequenceToVolumeDatum(frm_dir.c_str(), frm_num, label,
+  	                             length, height, width, seg_id, &datum);
 
   sum_blob.set_num(1);
   sum_blob.set_channels(datum.channels());
@@ -79,14 +79,14 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Starting Iteration";
   int c = 0;
-  while (infile >> frm_dir >> start_frm >> label) {
+  while (infile >> frm_dir >> frm_num >> label) {
 	  c++;
 	  if (c % dropping_rate!=0){
 		  continue;
 	  }
 
-	  ReadImageSequenceToVolumeDatum(frm_dir.c_str(), start_frm, label,
-	    	                             length, height, width, sampling_rate, &datum);
+	  ReadImageSequenceToVolumeDatum(frm_dir.c_str(), frm_num, label,
+	    	                             length, height, width, seg_id, &datum);
 	    const string& data = datum.data();
 	    size_in_datum = datum.data().size();
 	    CHECK_EQ(size_in_datum, data_size) << "Incorrect data field size " <<

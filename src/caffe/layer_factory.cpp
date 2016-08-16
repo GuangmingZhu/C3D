@@ -12,6 +12,7 @@
 #include "caffe/pool3d_layer.hpp"
 #include "caffe/volume_data_layer.hpp"
 #include "caffe/video_data_layer.hpp"
+#include "caffe/reshape_layer.hpp"
 
 
 using std::string;
@@ -93,6 +94,8 @@ Layer<Dtype>* GetLayer(const LayerParameter& param) {
 	return new VolumeDataLayer<Dtype>(param);
   case LayerParameter_LayerType_VIDEO_DATA:
 	return new VideoDataLayer<Dtype>(param);
+  case LayerParameter_LayerType_RESHAPE:
+	return new ReshapeLayer<Dtype>(param);
   case LayerParameter_LayerType_NONE:
     LOG(FATAL) << "Layer " << name << " has unspecified type.";
     break;
