@@ -1,5 +1,10 @@
 # Installation
 
+cp Makefile.config.example Makefile.config
+make all -j8
+make pycaffe
+
+
 For c3d in specific, please check, post issues at:
 https://github.com/dutran/c3d/issues
 
