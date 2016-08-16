@@ -8,7 +8,7 @@ layers {
     source: "isogr_images_split/train_valid_depth_list.txt"
     use_image: true
 	mean_value: 127
-    use_temporal_jitter: false
+    use_temporal_jitter: true
     use_pyramid_input: true
     batch_size: 10
     crop_size: 112

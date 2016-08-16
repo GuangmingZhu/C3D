@@ -174,7 +174,7 @@ bool ReadVideoToVolumeDatum(const char* filename, const int start_frm, const int
 }
 
 bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int frm_num, const int label,
-		const int length, const int height, const int width, const int seg_id, VolumeDatum* datum){
+		const int length, const int height, const int width, const int seg_id, const bool temporal_jitter, VolumeDatum* datum){
 	char fn_im[256];
 	cv::Mat img, img_origin;
 	char *buffer;
@@ -212,12 +212,14 @@ bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int frm_num, cons
 		for (int i = seg_len; i < length; i++)
 			frm_idx[i] = end_pos[seg_id];
 	} else {
-		float jit, rate = frm_num;
+		float jit = 0.0;
+		float rate = frm_num;
 		rate = rate/length;
 		frm_idx[0] = 1;
 		frm_idx[length-1] = frm_num;
 		for (int i= 1; i < length - 1; i++) {
-			caffe_rng_uniform(1, float(-1.0), float(1.0), &jit);
+			if (temporal_jitter)
+				caffe_rng_uniform(1, float(-1.0), float(1.0), &jit);
 			frm_idx[i] = int(round(rate*i + rate/2*jit));
 			if (frm_idx[i] == 0) frm_idx[i] = 1;
 		}

@@ -52,11 +52,11 @@ inline bool ReadVideoToVolumeDatum(const char* filename, const int start_frm, co
 }
 
 bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int frm_num, const int label,
-		const int length, const int height, const int width, const int seg_id, VolumeDatum* datum);
+		const int length, const int height, const int width, const int seg_id, const bool temporal_jitter, VolumeDatum* datum);
 
 inline bool ReadImageSequenceToVolumeDatum(const char* img_dir, const int frm_num, const int label,
-		const int length, const int seg_id, VolumeDatum* datum){
-	return ReadImageSequenceToVolumeDatum(img_dir, frm_num, label, length, 0, 0, seg_id, datum);
+		const int length, const int seg_id, const bool temporal_jitter, VolumeDatum* datum){
+	return ReadImageSequenceToVolumeDatum(img_dir, frm_num, label, length, 0, 0, seg_id, temporal_jitter, datum);
 }
 
 template <typename Dtype>

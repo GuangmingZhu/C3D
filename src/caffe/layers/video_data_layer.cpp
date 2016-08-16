@@ -93,17 +93,12 @@ void* VideoDataLayerPrefetch(void* layer_pointer) {
     bool read_status;
     int id = layer->shuffle_index_[layer->lines_id_];
     if (!use_image){
-    	if (!use_temporal_jitter){
-    		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), layer->frm_list_[id],
-    	    		layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
-    	}else{
-    		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), -1,
-    	    		layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
-    	}
-    }
+		read_status = ReadVideoToVolumeDatum(layer->file_list_[id].c_str(), layer->frm_list_[id],
+				layer->label_list_[id], new_length, new_height, new_width, sampling_rate, &datum);
+	}
     else {
 		read_status = ReadImageSequenceToVolumeDatum(layer->file_list_[id].c_str(), layer->frm_list_[id],
-				layer->label_list_[id], new_length, new_height, new_width, seg_id, &datum);
+				layer->label_list_[id], new_length, new_height, new_width, seg_id, use_temporal_jitter, &datum);
     }
 
     if (layer->phase_ == Caffe::TEST){
@@ -278,21 +273,12 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   string filename;
   int frm, label;
 
-  if ((!use_image) && use_temporal_jitter){
-	  while (infile >> filename >> label) {
-		  file_list_.push_back(filename);
-		  label_list_.push_back(label);
-		  shuffle_index_.push_back(count);
-		  count++;
-	  }
-  } else {
-	  while (infile >> filename >> frm >> label) {
-		  file_list_.push_back(filename);
-		  frm_list_.push_back(frm);
-		  label_list_.push_back(label);
-		  shuffle_index_.push_back(count);
-		  count++;
-	  }
+  while (infile >> filename >> frm >> label) {
+	  file_list_.push_back(filename);
+	  frm_list_.push_back(frm);
+	  label_list_.push_back(label);
+	  shuffle_index_.push_back(count);
+	  count++;
   }
 
   if (count==0){
@@ -322,19 +308,13 @@ void VideoDataLayer<Dtype>::SetUp(const vector<Blob<Dtype>*>& bottom,
   VolumeDatum datum;
   int id = shuffle_index_[lines_id_];
   if (!use_image){
-	  if (use_temporal_jitter){
-		  srand (time(NULL));
-		  CHECK(ReadVideoToVolumeDatum(file_list_[0].c_str(), 0, label_list_[0],
-		                             new_length, new_height, new_width, sampling_rate, &datum));
-	  }
-	  else
-		  CHECK(ReadVideoToVolumeDatum(file_list_[id].c_str(), frm_list_[id], label_list_[id],
-                           	   	   new_length, new_height, new_width, sampling_rate, &datum));
+	  CHECK(ReadVideoToVolumeDatum(file_list_[id].c_str(), frm_list_[id], label_list_[id],
+				  new_length, new_height, new_width, sampling_rate, &datum));
   }
   else{
 	  LOG(INFO) << "read video from " << file_list_[id].c_str();
 	  CHECK(ReadImageSequenceToVolumeDatum(file_list_[id].c_str(), frm_list_[id], label_list_[id],
-	                             new_length, new_height, new_width, 3, &datum));
+	                             new_length, new_height, new_width, 3, use_temporal_jitter, &datum));
   }
 
   // image

@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   infile >> frm_dir >> frm_num >> label;
 
   ReadImageSequenceToVolumeDatum(frm_dir.c_str(), frm_num, label,
-  	                             length, height, width, seg_id, &datum);
+  	                             length, height, width, seg_id, false, &datum);
 
   sum_blob.set_num(1);
   sum_blob.set_channels(datum.channels());
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
 	  }
 
 	  ReadImageSequenceToVolumeDatum(frm_dir.c_str(), frm_num, label,
-	    	                             length, height, width, seg_id, &datum);
+	    	                             length, height, width, seg_id, false, &datum);
 	    const string& data = datum.data();
 	    size_in_datum = datum.data().size();
 	    CHECK_EQ(size_in_datum, data_size) << "Incorrect data field size " <<
