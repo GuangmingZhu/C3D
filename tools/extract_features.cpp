@@ -114,7 +114,7 @@ int feature_extraction_pipeline(int argc, char** argv) {
 
   Datum datum;
   leveldb::WriteBatch* batch = new leveldb::WriteBatch();
-  const int kMaxKeyStrLength = 6;
+  const int kMaxKeyStrLength = 100;
   char key_str[kMaxKeyStrLength];
   int num_bytes_of_binary_code = sizeof(Dtype);
   vector<Blob<float>*> input_vec;
