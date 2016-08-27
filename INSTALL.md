@@ -1,7 +1,9 @@
 # Installation
 
 cp Makefile.config.example Makefile.config
+
 make all -j8
+
 make pycaffe
 
 

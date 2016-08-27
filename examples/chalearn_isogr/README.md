@@ -10,4 +10,4 @@ When you have converted video files into image files, you need to change the roo
 The model will be trained based on the pretrained model c3d_ucf101_finetune_whole_iter_20000. You can download the pretrained model from the website https://www.dropbox.com/s/mkc9q7g4wnqnmcv/c3d_ucf101_finetune_whole_iter_20000. Then run train_chalearn_isogr_rgb.sh and train_chalearn_isogr_depth.sh to train the model based on the RGB images and the depth images, respectively.
 
 # 4. Test the model
-You can run test_chalearn_isogr.sh to test the model. Please check that the trained net param files have been downloaded and located in the right position. You will get test_prediction.txt which store the final test result when testing. 
+You can run test_chalearn_isogr.sh to test the model. Please check that the trained net param files have been downloaded and located in the right position. You will get test_prediction.txt which store the final test result when testing. You can download our trained net param files from: https://pan.baidu.com/s/1slWxiwd 

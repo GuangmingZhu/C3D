@@ -139,7 +139,7 @@ int feature_extraction_pipeline(int argc, char** argv) {
       }
       string value;
       datum.SerializeToString(&value);
-      snprintf(key_str, kMaxKeyStrLength, "%06d", image_index);
+      snprintf(key_str, kMaxKeyStrLength, "%016d", image_index);
       batch->Put(string(key_str), value);
       ++image_index;
       if (image_index % 1000 == 0) {
